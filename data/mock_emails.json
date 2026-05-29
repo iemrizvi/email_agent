@@ -1,0 +1,7 @@
+[
+  {"id": "001", "from": "customer@example.com", "subject": "Where is my order?", "body": "I placed an order 5 days ago and haven't received anything. This is unacceptable."},
+  {"id": "002", "from": "spam@ads.com", "subject": "WIN A FREE IPHONE", "body": "Click here to claim your prize now!!!"},
+  {"id": "003", "from": "partner@business.com", "subject": "Meeting next week?", "body": "Hi, can we schedule a call to discuss the project proposal?"},
+  {"id": "004", "from": "angry@client.com", "subject": "Your service is terrible", "body": "I have been waiting 2 weeks for a refund and nobody is helping me."},
+  {"id": "005", "from": "info@newsletter.com", "subject": "Your weekly digest", "body": "Here are the top stories this week. Unsubscribe anytime."}
+]

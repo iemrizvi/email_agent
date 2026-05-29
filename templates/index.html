@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Agent</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #e0e0e0; min-height: 100vh; }
+  header { background: #1a1a1a; border-bottom: 1px solid #2a2a2a; padding: 20px 40px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 20px; font-weight: 600; color: #fff; }
+  header span { font-size: 12px; background: #00c951; color: #000; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; }
+  .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 24px; }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 18px; color: #fff; }
+  input, textarea { width: 100%; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 10px 14px; color: #e0e0e0; font-size: 14px; margin-bottom: 12px; font-family: inherit; }
+  input:focus, textarea:focus { outline: none; border-color: #555; }
+  textarea { resize: vertical; min-height: 80px; }
+  button { width: 100%; background: #7c3aed; color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  button:hover { background: #6d28d9; }
+  button:disabled { background: #333; color: #666; cursor: not-allowed; }
+  .result-box { margin-top: 16px; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 16px; display: none; }
+  .result-box.show { display: block; }
+  .label-badge { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; }
+  .label-complaint { background: #3b0000; color: #ff6b6b; }
+  .label-inquiry { background: #001a3b; color: #60a5fa; }
+  .label-spam { background: #1a1a00; color: #facc15; }
+  .label-other { background: #1a1a1a; color: #9ca3af; border: 1px solid #333; }
+  .draft-text { font-size: 13px; color: #ccc; line-height: 1.6; white-space: pre-wrap; }
+  .flag-warning { background: #2a1000; border: 1px solid #7c2d00; border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #fb923c; margin-bottom: 10px; }
+  .emails-section h2 { font-size: 15px; font-weight: 600; margin-bottom: 18px; color: #fff; }
+  .email-row { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 18px 20px; margin-bottom: 12px; display: grid; grid-template-columns: 120px 1fr auto; gap: 16px; align-items: start; }
+  .email-row:hover { border-color: #3a3a3a; }
+  .email-subject { font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+  .email-from { font-size: 12px; color: #666; margin-bottom: 8px; }
+  .email-draft { font-size: 12px; color: #999; line-height: 1.5; }
+  .email-time { font-size: 11px; color: #555; white-space: nowrap; }
+  .flagged-row { border-left: 3px solid #f97316; }
+  .empty-state { text-align: center; padding: 60px; color: #555; font-size: 14px; }
+  .refresh-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #ccc; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; width: auto; margin-bottom: 16px; }
+  .refresh-btn:hover { background: #222; }
+  .loading { color: #666; font-size: 13px; text-align: center; padding: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Email Agent</h1>
+  <span>LIVE</span>
+</header>
+
+<div class="container">
+  <div class="two-col">
+    <div class="card">
+      <h2>Process a new email</h2>
+      <input type="text" id="sender" placeholder="From (email address)" />
+      <input type="text" id="subject" placeholder="Subject" />
+      <textarea id="body" placeholder="Email body..."></textarea>
+      <button id="processBtn" onclick="processEmail()">Run Agent</button>
+      <div class="result-box" id="resultBox">
+        <div id="flagWarning" class="flag-warning" style="display:none">Flagged as complaint — needs attention</div>
+        <div id="labelBadge" class="label-badge"></div>
+        <p class="draft-text" id="draftText"></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Stats</h2>
+      <div id="stats" class="loading">Loading...</div>
+    </div>
+  </div>
+
+  <div class="emails-section">
+    <button class="refresh-btn" onclick="loadEmails()">Refresh</button>
+    <div id="emailsList"><div class="loading">Loading emails...</div></div>
+  </div>
+</div>
+
+<script>
+  let emailCounter = Date.now();
+
+  async function processEmail() {
+    const sender = document.getElementById('sender').value.trim();
+    const subject = document.getElementById('subject').value.trim();
+    const body = document.getElementById('body').value.trim();
+
+    if (!sender || !subject || !body) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    const btn = document.getElementById('processBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    try {
+      const res = await fetch('/process', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id: String(emailCounter++), sender, subject, body })
+      });
+      const data = await res.json();
+
+      const box = document.getElementById('resultBox');
+      const badge = document.getElementById('labelBadge');
+      const draft = document.getElementById('draftText');
+      const flag = document.getElementById('flagWarning');
+
+      badge.textContent = data.label;
+      badge.className = 'label-badge label-' + data.label;
+      draft.textContent = data.draft;
+      flag.style.display = data.flagged ? 'block' : 'none';
+      box.classList.add('show');
+
+      loadEmails();
+    } catch(e) {
+      alert('Error: ' + e.message);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Run Agent';
+  }
+
+  async function loadEmails() {
+    const res = await fetch('/emails');
+    const emails = await res.json();
+
+    updateStats(emails);
+
+    const list = document.getElementById('emailsList');
+    if (emails.length === 0) {
+      list.innerHTML = '<div class="empty-state">No emails processed yet</div>';
+      return;
+    }
+
+    list.innerHTML = emails.map(e => `
+      <div class="email-row ${e.flagged ? 'flagged-row' : ''}">
+        <div>
+          <span class="label-badge label-${e.label}">${e.label}</span>
+          ${e.flagged ? '<div style="font-size:11px;color:#f97316;margin-top:4px">Flagged</div>' : ''}
+        </div>
+        <div>
+          <div class="email-subject">${e.subject}</div>
+          <div class="email-from">${e.from}</div>
+          <div class="email-draft">${e.draft_reply.substring(0, 120)}${e.draft_reply.length > 120 ? '...' : ''}</div>
+        </div>
+        <div class="email-time">${new Date(e.processed_at).toLocaleTimeString()}</div>
+      </div>
+    `).join('');
+  }
+
+  function updateStats(emails) {
+    const counts = { complaint: 0, inquiry: 0, spam: 0, other: 0, flagged: 0 };
+    emails.forEach(e => {
+      if (counts[e.label] !== undefined) counts[e.label]++;
+      if (e.flagged) counts.flagged++;
+    });
+
+    document.getElementById('stats').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="background:#111;border-radius:8px;padding:16px;text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#fff">${emails.length}</div>
+          <div style="font-size:12px;color:#666;margin-top:4px">Total processed</div>
+        </div>
+        <div style="background:#2a1000;border-radius:8px;padding:16px;text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#f97316">${counts.flagged}</div>
+          <div style="font-size:12px;color:#666;margin-top:4px">Flagged</div>
+        </div>
+        <div style="background:#001a3b;border-radius:8px;padding:16px;text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#60a5fa">${counts.inquiry}</div>
+          <div style="font-size:12px;color:#666;margin-top:4px">Inquiries</div>
+        </div>
+        <div style="background:#3b0000;border-radius:8px;padding:16px;text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#ff6b6b">${counts.complaint}</div>
+          <div style="font-size:12px;color:#666;margin-top:4px">Complaints</div>
+        </div>
+      </div>
+    `;
+  }
+
+  loadEmails();
+</script>
+</body>
+</html>
