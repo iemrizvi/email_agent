@@ -4,7 +4,7 @@ An intelligent email processing agent built with LangChain, FastAPI, and MongoDB
 Automatically classifies incoming emails, drafts professional replies, flags complaints, and logs everything to a database.
 
 ## Demo
-![UI Screenshot](screenshot.png)
+![UI Screenshot](screenshot.jpeg)
 
 ## Features
 - Classifies emails into: inquiry, complaint, spam, other
